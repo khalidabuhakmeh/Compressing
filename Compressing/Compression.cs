@@ -44,25 +44,6 @@ namespace Compressing
                 "Brotli"
             );
         }
-        
-        public static async Task<CompressionResult> ToDeflateAsync(this string value, CompressionLevel level = CompressionLevel.Fastest)
-        {
-            var bytes = Encoding.Unicode.GetBytes(value);
-            await using var input = new MemoryStream(bytes);
-            await using var output = new MemoryStream();
-            await using var stream = new DeflateStream(output, level);
-
-            await input.CopyToAsync(stream);
-            
-            var result = output.ToArray();
-
-            return new CompressionResult(
-                new(value, bytes.Length),
-                new(Convert.ToBase64String(result), result.Length),
-                level,
-                "Deflate"
-            );
-        }
 
         public static async Task<string> FromGzipAsync(this string value)
         {
@@ -87,19 +68,6 @@ namespace Compressing
             
             return Encoding.Unicode.GetString(output.ToArray());
         }
-        
-        public static async Task<string> FromDeflateAsync(this string value)
-        {
-            var bytes = Convert.FromBase64String(value);
-            await using var input = new MemoryStream(bytes);
-            await using var output = new MemoryStream();
-            await using var stream = new DeflateStream(input, CompressionMode.Decompress);
-
-            await stream.CopyToAsync(output);
-            
-            return Encoding.Unicode.GetString(output.ToArray());
-        }
-        
     }
 
     public record CompressionResult(
