@@ -1,4 +1,7 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 using System.Threading.Tasks;
 using Compressing;
 using Spectre.Console;
@@ -19,20 +22,43 @@ public class Program
             .Title("compression in bytes")
             .ShowHeaders()
             .AddColumns("kind", "level", "before", "after", "difference", "% reduction");
-    
+
         foreach (var result in compressions)
         {
             table
                 .AddRow(
-                    result.Kind, 
+                    result.Kind,
                     result.Level.ToString(),
                     result.Original.Size.ToString("N0"),
-                    result.Result.Size.ToString("N0"), 
-                    result.Difference.ToString("N0"), 
+                    result.Result.Size.ToString("N0"),
+                    result.Difference.ToString("N0"),
                     result.Percent.ToString("P")
                 );
         }
 
         AnsiConsole.Render(table);
+
+        // Use BrotliEncoder directly
+        BrotliEncoderDecoderUsage(comedyOfErrors);
+    }
+
+    public static void BrotliEncoderDecoderUsage(string comedyOfErrors)
+    {
+        var source = Encoding.Unicode.GetBytes(comedyOfErrors);
+        var memory = new byte[source.Length];
+        var encoded = BrotliEncoder.TryCompress(
+            source,
+            memory,
+            out var encodedBytes
+        );
+
+        Console.WriteLine($"compress bytes: {encodedBytes}");
+        
+        
+        var target = new byte[memory.Length];
+        BrotliDecoder.TryDecompress(memory, target, out var decodedBytes);
+        Console.WriteLine($"decompress bytes: {decodedBytes}");
+
+        var value = Encoding.Unicode.GetString(target);
     }
 }
