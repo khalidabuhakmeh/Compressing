@@ -44,7 +44,7 @@ namespace Compressing
             await using var stream = createDecompressionStream(input);
 
             await stream.CopyToAsync(output);
-            await stream.FlushAsync();
+            await output.FlushAsync();
 
             return Encoding.Unicode.GetString(output.ToArray());
         }
