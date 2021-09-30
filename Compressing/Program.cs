@@ -14,8 +14,10 @@ public class Program
 
         var compressions = new[]
         {
-            await comedyOfErrors.ToGzipAsync(),
-            await comedyOfErrors.ToBrotliAsync()
+            await comedyOfErrors.ToGzipAsync(CompressionLevel.Fastest),
+            await comedyOfErrors.ToGzipAsync(CompressionLevel.Optimal),
+            await comedyOfErrors.ToBrotliAsync(CompressionLevel.Fastest),
+            await comedyOfErrors.ToBrotliAsync(CompressionLevel.Optimal),
         };
 
         var table = new Table()

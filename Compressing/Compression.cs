@@ -8,66 +8,52 @@ namespace Compressing
 {
     public static class Compression
     {
-        public static async Task<CompressionResult> ToGzipAsync(this string value, CompressionLevel level = CompressionLevel.Fastest)
+        private static async Task<CompressionResult> ToCompressedStringAsync(string value,
+                                                                             CompressionLevel level,
+                                                                             string algorithm,
+                                                                             Func<Stream, Stream> createCompressionStream)
         {
             var bytes = Encoding.Unicode.GetBytes(value);
             await using var input = new MemoryStream(bytes);
             await using var output = new MemoryStream();
-            await using var stream = new GZipStream(output, level);
+            await using var stream = createCompressionStream(output);
 
             await input.CopyToAsync(stream);
-            
+            await stream.FlushAsync();
+
             var result = output.ToArray();
 
             return new CompressionResult(
                 new(value, bytes.Length),
                 new(Convert.ToBase64String(result), result.Length),
                 level,
-                "Gzip");
+                algorithm);
         }
+
+        public static async Task<CompressionResult> ToGzipAsync(this string value, CompressionLevel level = CompressionLevel.Fastest)
+            => await ToCompressedStringAsync(value, level, "GZip", s => new GZipStream(s, level));
         
         public static async Task<CompressionResult> ToBrotliAsync(this string value, CompressionLevel level = CompressionLevel.Fastest)
+            => await ToCompressedStringAsync(value, level, "Brotli", s => new BrotliStream(s, level));
+
+        private static async Task<string> FromCompressedStringAsync(string value, Func<Stream, Stream> createDecompressionStream)
         {
-            var bytes = Encoding.Unicode.GetBytes(value);
+            var bytes = Convert.FromBase64String(value);
             await using var input = new MemoryStream(bytes);
             await using var output = new MemoryStream();
-            await using var stream = new BrotliStream(output, level);
+            await using var stream = createDecompressionStream(input);
 
-            await input.CopyToAsync(stream);
-            
-            var result = output.ToArray();
+            await stream.CopyToAsync(output);
+            await stream.FlushAsync();
 
-            return new CompressionResult(
-                new(value, bytes.Length),
-                new(Convert.ToBase64String(result), result.Length),
-                level,
-                "Brotli"
-            );
+            return Encoding.Unicode.GetString(output.ToArray());
         }
 
         public static async Task<string> FromGzipAsync(this string value)
-        {
-            var bytes = Convert.FromBase64String(value);
-            await using var input = new MemoryStream(bytes);
-            await using var output = new MemoryStream();
-            await using var stream = new GZipStream(input, CompressionMode.Decompress);
-
-            await stream.CopyToAsync(output);
-            
-            return Encoding.Unicode.GetString(output.ToArray());
-        }
-
+            => await FromCompressedStringAsync(value, s => new GZipStream(s, CompressionMode.Decompress));
+ 
         public static async Task<string> FromBrotliAsync(this string value)
-        {
-            var bytes = Convert.FromBase64String(value);
-            await using var input = new MemoryStream(bytes);
-            await using var output = new MemoryStream();
-            await using var stream = new BrotliStream(input, CompressionMode.Decompress);
-
-            await stream.CopyToAsync(output);
-            
-            return Encoding.Unicode.GetString(output.ToArray());
-        }
+            => await FromCompressedStringAsync(value, s => new BrotliStream(s, CompressionMode.Decompress));
     }
 
     public record CompressionResult(
